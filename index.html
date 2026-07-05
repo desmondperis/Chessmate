@@ -157,13 +157,11 @@
 
   .review{display:flex;gap:8px;align-items:center;margin-top:9px}
   .review button{
-    width:42px;height:40px;border-radius:11px;background:var(--panel);border:1px solid var(--line);
+    flex:1;height:40px;border-radius:11px;background:var(--panel);border:1px solid var(--line);
     color:var(--muted);font-size:14px;display:grid;place-items:center;transition:.14s
   }
   .review button:hover{color:var(--text)}
-  .review .primary{flex:1;width:auto;background:var(--gold);color:#20160a;font-weight:700;font-size:14.5px;border-color:transparent}
-  .review .primary:hover{background:var(--gold-2)}
-  .review .ghost{flex:none;width:auto;padding:0 14px;font-weight:600}
+  .review button:active{transform:translateY(1px)}
 
   .l-puz{display:none}
   body[data-mode=puzzle] .l-play{display:none}
@@ -373,7 +371,6 @@
         <button id="btnPrev" aria-label="Previous">◀</button>
         <button id="btnNext" aria-label="Next">▶</button>
         <button id="btnLast" aria-label="Latest">⏭</button>
-        <button id="btnNew" class="primary"><span class="l-play">New game</span><span class="l-puz">Exit</span></button>
       </div>
 
     </div>
@@ -2583,10 +2580,14 @@ function concludeGame(kind, reason){
   saveCurrentUser(); updateRecordUI();
 }
 
-/* cache the in-progress play game so it can resume on reload */
+/* cache the in-progress play game so it can resume on reload / mode-switch */
 function persistGame(){
   if (mode !== 'play' || !CUR) return;
-  liveGame = { moves: game.history(), youAre: S.resolvedYou, orientation, strength: S.strength, time: S.time, over: gameOver, ts: Date.now() };
+  liveGame = {
+    moves: game.history(), youAre: S.resolvedYou, orientation, strength: S.strength, time: S.time,
+    cw: clock.on ? clock.w : null, cb: clock.on ? clock.b : null,
+    over: gameOver, ts: Date.now(),
+  };
   saveCurrentUser();
 }
 
@@ -3553,7 +3554,7 @@ function resumeGame(saved){
     const g = new Chess();
     for (const san of saved.moves){ if (!g.move(san)) return false; }
     game = g; Engine.newGame();
-    mode = 'play';
+    mode = 'play'; hideBanner();
     S.strength = saved.strength || S.strength;
     S.resolvedYou = saved.youAre || 'w';
     orientation = saved.orientation || S.resolvedYou;
@@ -3563,12 +3564,17 @@ function resumeGame(saved){
     const h = game.history({ verbose: true });
     lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null;
     buildSquares(); renderPosition(); renderMoveList(); renderCaptured();
-    setupClock(); setModeUI();
+    setupClock();
+    if (clock.on && typeof saved.cw === 'number' && typeof saved.cb === 'number'){ clock.w = saved.cw; clock.b = saved.cb; renderClocks(); }
+    setModeUI();
     evalFill.style.height = '50%'; evalNum.textContent = '0.0'; evalNum.classList.remove('neg');
-    toast('Resumed your last game.');
+    toast('Resumed your game.');
     if (game.game_over()) endGame();
-    else if (!userControlsSide(game.turn())) scheduleEngineMove();
-    else if (S.showEval) refreshEval();
+    else {
+      if (clock.on) startClockTicking();
+      if (!userControlsSide(game.turn())) scheduleEngineMove();
+      else if (S.showEval) refreshEval();
+    }
     return true;
   } catch { return false; }
 }
@@ -3583,7 +3589,7 @@ function renderGamesList(){
   if (!items.length){ list.innerHTML = '<div class="games-empty">No games yet — finish one and it appears here.</div>'; return; }
   items.forEach(g => {
     const row = el('button', 'game-row'); row.type = 'button';
-    const label = g._live ? 'Resume' : (g.result === 'win' ? 'Won' : g.result === 'loss' ? 'Lost' : 'Draw');
+    const label = g._live ? 'In progress' : (g.result === 'win' ? 'Won' : g.result === 'loss' ? 'Lost' : 'Draw');
     const cls = g._live ? 'ip' : (g.result === 'win' ? 'w' : g.result === 'loss' ? 'l' : 'd');
     const when = new Date(g.ts || Date.now());
     const date = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -3645,7 +3651,6 @@ function wireControls(){
   $('btnSwitchUser').onclick = () => { closeSettings(); showLanding('pick'); };
   $('btnAddUser').onclick = () => { closeSettings(); showLanding('new'); };
 
-  $('btnNew').onclick = () => { mode = 'play'; newGame(); };
   $('btnFlip').onclick = () => { orientation = orientation === 'w' ? 'b' : 'w'; buildSquares(); renderPosition(); renderClocks(); renderCaptured(); };
   $('btnUndo').onclick = () => {
     if (mode === 'puzzle'){ retryPuzzle(); return; }
@@ -3672,7 +3677,12 @@ function wireControls(){
 
   movesEl.onclick = (e) => { const s = e.target.closest('.san'); if (s && s.dataset.ply) gotoPly(+s.dataset.ply); };
 
-  tabPlay.onclick = () => { if (mode !== 'play'){ mode = 'play'; newGame(); } };
+  tabPlay.onclick = () => {
+    if (mode === 'play') return;
+    mode = 'play';
+    if (liveGame && !liveGame.over && liveGame.moves && liveGame.moves.length) resumeGame(liveGame);
+    else newGame();
+  };
   tabPuzzles.onclick = () => { if (mode !== 'puzzle') startPuzzles(); };
   tabAnalysis.onclick = () => { if (mode !== 'analysis'){ mode = 'analysis'; newGame(); toast('Analysis: move both sides freely.'); } };
 
