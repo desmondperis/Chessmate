@@ -6,11 +6,12 @@
 <meta name="theme-color" content="#12141a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Gambit · Chess</title>
-<link rel="manifest" href='data:application/json,{"name":"Gambit","short_name":"Gambit","display":"standalone","background_color":"%2312141a","theme_color":"%2312141a","start_url":"./","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%2312141a%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2764%27 text-anchor=%27middle%27 fill=%27%23d9a441%27%3E%E2%99%9E%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<title>Chessmate · Chess</title>
+<link rel="manifest" href='data:application/json,{"name":"Chessmate","short_name":"Chessmate","display":"standalone","background_color":"%2312141a","theme_color":"%2312141a","start_url":"./","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%2312141a%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2764%27 text-anchor=%27middle%27 fill=%27%23d9a441%27%3E%E2%99%9E%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script>try{var r=JSON.parse(localStorage.getItem('chessmate.roster')||'null');if((r&&r.current)||localStorage.getItem('chessmate.name'))document.documentElement.setAttribute('data-named','1');}catch(e){}</script>
 <style>
   :root{
     --ink:#12141a; --panel:#191c24; --panel-2:#20242f; --line:rgba(255,255,255,.07);
@@ -122,9 +123,10 @@
   .sq.dot::after{content:"";position:absolute;inset:0;margin:auto;width:30%;height:30%;border-radius:50%;background:rgba(20,22,28,.28)}
   .sq.dark.dot::after{background:rgba(20,22,28,.34)}
   .sq.cap::after{content:"";position:absolute;inset:6%;border-radius:50%;border:5px solid rgba(20,22,28,.26);box-sizing:border-box}
-  .co{position:absolute;font-family:var(--mono);font-size:9.5px;font-weight:700;line-height:1;opacity:.62;pointer-events:none}
-  .co-rank{top:3px;left:3px} .co-file{bottom:2px;right:4px}
-  .sq.light .co{color:var(--dk)} .sq.dark .co{color:var(--lt)}
+  .coords{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .co{position:absolute;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1;opacity:.85}
+  .co-file{bottom:3px;width:12.5%;text-align:left;padding-left:4px}
+  .co-rank{left:3px;height:12.5%;padding-top:3px}
 
   .pieces{position:absolute;inset:0;pointer-events:none}
   .pc{
@@ -231,6 +233,59 @@
   #settingsApply{width:100%;padding:14px;border-radius:13px;background:var(--gold);color:#20160a;font-weight:700;font-size:15px;transition:.14s}
   #settingsApply:hover{background:var(--gold-2)}
 
+  /* ---------- users + games ---------- */
+  .user-pick{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .user-btn{position:relative;display:flex;align-items:center;gap:10px;padding:13px 15px;border-radius:13px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:15px;font-weight:600;transition:.14s;text-align:left}
+  .user-btn:hover{background:var(--panel-2);border-color:var(--gold)}
+  .u-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .u-rec{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none}
+  .u-del{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px;color:var(--muted);background:transparent;flex:none}
+  .u-del:hover{color:var(--bad);background:rgba(224,100,95,.14)}
+  .landing-link{margin-top:16px;background:none;color:var(--muted);font-size:13.5px;text-decoration:underline;padding:6px}
+  .landing-link:hover{color:var(--text)}
+  .user-actions{display:flex;gap:8px;margin-top:8px}
+  .mini-btn{flex:1;padding:10px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:13px;font-weight:600;transition:.13s}
+  .mini-btn:hover{border-color:var(--gold)}
+  .games-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
+  .game-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);text-align:left;transition:.13s}
+  .game-row:hover{border-color:var(--gold)}
+  .g-res{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex:none}
+  .g-res.w{color:var(--good);background:rgba(121,192,106,.14)}
+  .g-res.l{color:var(--bad);background:rgba(224,100,95,.14)}
+  .g-res.d{color:var(--muted);background:rgba(255,255,255,.06)}
+  .g-res.ip{color:var(--gold-2);background:rgba(217,164,65,.16)}
+  .g-meta{flex:1;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .g-date{font-family:var(--mono);font-size:11px;color:var(--muted);flex:none}
+  .games-empty{color:var(--muted);font-size:13px;padding:8px 2px;line-height:1.5}
+
+  /* narrow screens: tabs drop to their own centered row */
+  @media(max-width:520px){
+    .top{flex-wrap:wrap;gap:10px 14px}
+    .brand{order:1}
+    .icon-btn{order:2}
+    .tabs{order:3;margin-left:0;width:100%;justify-content:center}
+  }
+
+  /* ---------- landing (name gate) ---------- */
+  .landing{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(1000px 500px at 50% -10%,#1b1f2b,transparent 60%),var(--ink)}
+  html[data-named] .landing{display:none}
+  .landing.gone{display:none}
+  .landing-card{width:100%;max-width:360px;text-align:center}
+  .landing-brand{font-family:var(--display);font-weight:800;font-size:46px;letter-spacing:.5px;line-height:1}
+  .landing-brand b{color:var(--gold)}
+  .landing-tag{color:var(--muted);font-size:14.5px;margin:12px 0 28px}
+  .landing-input{width:100%;padding:15px 16px;border-radius:13px;background:var(--panel);border:1px solid var(--line);
+    color:var(--text);font-family:var(--body);font-size:16px;text-align:center;outline:none;transition:.15s}
+  .landing-input:focus{border-color:var(--gold)}
+  .landing-input::placeholder{color:var(--muted)}
+  .landing-btn{width:100%;margin-top:12px;padding:15px;border-radius:13px;background:var(--gold);color:#20160a;
+    font-weight:700;font-size:15.5px;transition:.14s}
+  .landing-btn:hover{background:var(--gold-2)}
+  .name-field{width:100%;padding:12px 14px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--text);font-family:var(--body);font-size:16px;outline:none}
+  .name-field:focus{border-color:var(--gold)}
+
   @media (prefers-reduced-motion: reduce){
     .pc{transition:none} .eval-fill{transition:none} *{scroll-behavior:auto}
   }
@@ -238,11 +293,25 @@
 </head>
 <body data-theme="emerald" data-eval="on" data-mode="play">
 
+  <div class="landing" id="landing">
+    <div class="landing-card">
+      <div class="landing-brand">CHESS<b>MATE</b></div>
+      <p class="landing-tag">Beautiful chess. Free analysis. Plays offline.</p>
+      <div id="userPick" class="user-pick"></div>
+      <div id="userNew" class="user-new">
+        <input id="nameInput" class="landing-input" type="text" maxlength="20" placeholder="Enter your name" autocomplete="off" autocapitalize="words" spellcheck="false">
+        <button id="landingStart" class="landing-btn">Start playing</button>
+      </div>
+      <button id="userToggle" class="landing-link" type="button" style="display:none">+ New player</button>
+    </div>
+  </div>
+
   <header class="top">
-    <div class="brand">GAM<b>BIT</b></div>
+    <div class="brand">CHESS<b>MATE</b></div>
     <nav class="tabs">
       <button id="tabPlay" class="tab on">Play</button>
       <button id="tabPuzzles" class="tab">Puzzles</button>
+      <button id="tabAnalysis" class="tab">Analysis</button>
     </nav>
     <button id="btnSettings" class="icon-btn" aria-label="Settings">⚙</button>
   </header>
@@ -272,6 +341,7 @@
         <div class="frame">
           <div id="board" class="board"></div>
           <div id="pieces" class="pieces"></div>
+          <div id="coords" class="coords"></div>
           <svg id="arrows" class="arrows" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
         </div>
       </div>
@@ -304,7 +374,6 @@
         <button id="btnNext" aria-label="Next">▶</button>
         <button id="btnLast" aria-label="Latest">⏭</button>
         <button id="btnNew" class="primary"><span class="l-play">New game</span><span class="l-puz">Exit</span></button>
-        <button id="btnAnalysis" class="ghost">Analysis</button>
       </div>
 
     </div>
@@ -337,6 +406,18 @@
   <aside class="sheet" id="settings">
     <div class="sheet-head"><h2>Settings</h2><button id="settingsClose" aria-label="Close">✕</button></div>
     <div class="sheet-body">
+      <div class="field">
+        <label>Player</label>
+        <input id="nameField" class="name-field" type="text" maxlength="20" placeholder="Your name" autocomplete="off" autocapitalize="words" spellcheck="false">
+        <div class="user-actions">
+          <button id="btnSwitchUser" class="mini-btn" type="button">Switch player</button>
+          <button id="btnAddUser" class="mini-btn" type="button">New player</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Past games</label>
+        <div id="gamesList" class="games-list"></div>
+      </div>
       <div class="field">
         <label>Board theme</label>
         <div class="seg" id="segTheme">
@@ -2382,7 +2463,7 @@ export const Chess = function (fen) {
 
 /* ===== app ===== */
 /* ==========================================================================
-   GAMBIT — a chess app. App logic (ES module).
+   CHESSMATE — a chess app. App logic (ES module).
    Rules: chess.js (inlined above this in the built file).
    Engine: Stockfish (single-threaded) loaded as a Web Worker from CDN.
    PIECE_SVG is injected at build time.
@@ -2409,8 +2490,105 @@ const DEFAULTS = {
   time: 'unlimited',    // unlimited|3+2|5+0|10+0
 };
 let S = load();
-function load(){ try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('gambit.settings') || '{}') }; } catch { return { ...DEFAULTS }; } }
-function save(){ try { localStorage.setItem('gambit.settings', JSON.stringify(S)); } catch {} }
+function load(){ try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('chessmate.settings') || '{}') }; } catch { return { ...DEFAULTS }; } }
+function save(){ try { localStorage.setItem('chessmate.settings', JSON.stringify(S)); } catch {} }
+
+/* ==========================================================================
+   USERS — multiple profiles per device, each with its own record + game history
+   roster:            chessmate.roster  = { current, users:[{id,name}] }
+   per-user data:     chessmate.u_<id>  = { record:{w,l,d}, games:[...], live }
+   ========================================================================== */
+const uid = () => 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function loadRoster(){ try { return JSON.parse(localStorage.getItem('chessmate.roster') || 'null'); } catch { return null; } }
+function saveRoster(){ try { localStorage.setItem('chessmate.roster', JSON.stringify(roster)); } catch {} }
+function loadUserData(id){ try { return { record:{w:0,l:0,d:0}, games:[], live:null, ...JSON.parse(localStorage.getItem('chessmate.u_' + id) || '{}') }; } catch { return { record:{w:0,l:0,d:0}, games:[], live:null }; } }
+function saveUserData(id, d){ try { localStorage.setItem('chessmate.u_' + id, JSON.stringify(d)); } catch {} }
+function removeUserData(id){ try { localStorage.removeItem('chessmate.u_' + id); } catch {} }
+
+let roster = loadRoster();
+(function migrateUsers(){
+  if (roster && Array.isArray(roster.users) && roster.users.length) return;
+  roster = { current: null, users: [] };
+  let legacyName = ''; try { legacyName = localStorage.getItem('chessmate.name') || ''; } catch {}
+  if (legacyName){
+    const id = uid();
+    let rec = { w:0, l:0, d:0 }; try { rec = { w:0, l:0, d:0, ...JSON.parse(localStorage.getItem('chessmate.record') || '{}') }; } catch {}
+    let live = null; try { live = JSON.parse(localStorage.getItem('chessmate.lastgame') || 'null'); } catch {}
+    roster.users.push({ id, name: legacyName });
+    roster.current = id;
+    saveUserData(id, { record: rec, games: [], live });
+    saveRoster();
+    try { localStorage.removeItem('chessmate.name'); localStorage.removeItem('chessmate.record'); localStorage.removeItem('chessmate.lastgame'); } catch {}
+  } else {
+    saveRoster();
+  }
+})();
+
+let CUR = roster.current || null;
+let NAME = '';
+let record = { w: 0, l: 0, d: 0 };
+let games = [];
+let liveGame = null;
+let counted = false;   // guard so each finished game is recorded once
+
+function loadCurrentUser(){
+  if (!CUR){ NAME=''; record={w:0,l:0,d:0}; games=[]; liveGame=null; return; }
+  const d = loadUserData(CUR);
+  record = d.record || { w:0, l:0, d:0 };
+  games = d.games || [];
+  liveGame = d.live || null;
+  const u = roster.users.find(x => x.id === CUR);
+  NAME = u ? u.name : '';
+}
+function saveCurrentUser(){ if (CUR) saveUserData(CUR, { record, games, live: liveGame }); }
+function createUser(name){
+  const id = uid();
+  roster.users.push({ id, name: ((name || 'Player').trim().slice(0, 20)) || 'Player' });
+  roster.current = id; CUR = id;
+  saveUserData(id, { record:{w:0,l:0,d:0}, games:[], live:null });
+  saveRoster(); loadCurrentUser();
+  return id;
+}
+function switchUser(id){
+  if (!roster.users.find(u => u.id === id)) return;
+  roster.current = id; CUR = id; saveRoster(); loadCurrentUser();
+}
+function renameCurrentUser(name){
+  const u = roster.users.find(x => x.id === CUR);
+  if (u){ u.name = (name || '').trim().slice(0, 20); NAME = u.name; saveRoster(); }
+}
+function deleteUser(id){
+  const i = roster.users.findIndex(u => u.id === id);
+  if (i < 0) return;
+  roster.users.splice(i, 1); removeUserData(id);
+  if (CUR === id){ CUR = roster.users[0] ? roster.users[0].id : null; roster.current = CUR; }
+  saveRoster(); loadCurrentUser();
+}
+loadCurrentUser();
+
+function recordStr(){ return record.w + 'W ' + record.l + 'L ' + record.d + 'D'; }
+function updateRecordUI(){ if (mode === 'play') meRating.textContent = playerLabel(); }
+
+/* record a finished play game once: update W/L/D + archive it, clear the live game */
+function concludeGame(kind, reason){
+  gameOver = true;
+  if (mode !== 'play' || !CUR || counted) return;
+  counted = true;
+  if (kind === 'win') record.w++; else if (kind === 'loss') record.l++; else record.d++;
+  const g = { moves: game.history(), youAre: S.resolvedYou, orientation, strength: S.strength,
+              time: S.time, over: true, result: kind, reason, opp: (BOTS[S.strength] && BOTS[S.strength].name) || 'bot', ts: Date.now() };
+  if (g.moves.length){ games.unshift(g); if (games.length > 50) games.length = 50; }
+  liveGame = null;
+  saveCurrentUser(); updateRecordUI();
+}
+
+/* cache the in-progress play game so it can resume on reload */
+function persistGame(){
+  if (mode !== 'play' || !CUR) return;
+  liveGame = { moves: game.history(), youAre: S.resolvedYou, orientation, strength: S.strength, time: S.time, over: gameOver, ts: Date.now() };
+  saveCurrentUser();
+}
 
 /* ---------- bot definitions (Stockfish skill + search budget) ---------- */
 const BOTS = {
@@ -2551,7 +2729,7 @@ function pointToSq(clientX, clientY){
 /* ==========================================================================
    RENDERING
    ========================================================================== */
-let boardEl, pieceLayer, squaresById = new Map();
+let boardEl, pieceLayer, coordsLayer, squaresById = new Map();
 
 function buildSquares(){
   boardEl.innerHTML = '';
@@ -2562,17 +2740,34 @@ function buildSquares(){
       const isLight = (col + row) % 2 === 0;
       const d = el('div', 'sq ' + (isLight ? 'light' : 'dark'));
       d.dataset.sq = s;
-      // coordinate labels on edge squares
-      if (S.coords){
-        const file = s[0], rank = s[1];
-        const showFile = (orientation === 'w') ? row === 7 : row === 0;
-        const showRank = (orientation === 'w') ? col === 0 : col === 7;
-        if (showRank) d.appendChild(el('span', 'co co-rank', rank));
-        if (showFile) d.appendChild(el('span', 'co co-file', file));
-      }
       squaresById.set(s, d);
       boardEl.appendChild(d);
     }
+  }
+  buildCoords();
+}
+
+/* Coordinates live in their own layer ABOVE the pieces so they're never hidden
+   by a piece sitting on an edge square. File letters run along the bottom edge,
+   rank numbers down the left edge, each tinted to contrast its square. */
+function buildCoords(){
+  if (!coordsLayer) return;
+  coordsLayer.innerHTML = '';
+  if (!S.coords) return;
+  for (let i = 0; i < 8; i++){
+    const file = orientation === 'w' ? FILES[i] : FILES[7 - i];
+    const fileLight = (i + 7) % 2 === 0;               // bottom row is row index 7
+    const f = el('span', 'co co-file', file);
+    f.style.left = (i * 12.5) + '%';
+    f.style.color = fileLight ? 'var(--dk)' : 'var(--lt)';
+    coordsLayer.appendChild(f);
+
+    const rank = orientation === 'w' ? (8 - i) : (i + 1);
+    const rankLight = (0 + i) % 2 === 0;                // left column is col index 0
+    const r = el('span', 'co co-rank', rank);
+    r.style.top = (i * 12.5) + '%';
+    r.style.color = rankLight ? 'var(--dk)' : 'var(--lt)';
+    coordsLayer.appendChild(r);
   }
 }
 
@@ -2828,6 +3023,7 @@ function afterPositionChange(){
   // game end?
   if (game.game_over()){ endGame(); return; }
   if (mode === 'play'){
+    persistGame();
     if (!userControlsSide(game.turn())) { scheduleEngineMove(); }
     else { refreshEval(); }
   } else if (mode === 'analysis'){
@@ -2855,6 +3051,7 @@ async function scheduleEngineMove(){
   soundForMove(m);
   onClockMove(m.color);
   renderMoveList();
+  persistGame();
   setEvalFromCp(res.cp, res.mate, m.color); // honest-ish from search
   if (game.game_over()){ endGame(); return; }
   refreshEval();
@@ -2920,9 +3117,11 @@ function onClockMove(colorThatMoved){
   if (!clock.timer) startClockTicking();
 }
 function flag(color){
-  clearInterval(clock.timer); clock.timer = null; gameOver = true;
+  clearInterval(clock.timer); clock.timer = null;
+  const youLost = color === S.resolvedYou;
   const loser = color === 'w' ? 'White' : 'Black';
-  showBanner((color === S.resolvedYou ? 'Time out — you lose' : 'You win on time'), loser + ' flagged');
+  concludeGame(youLost ? 'loss' : 'win', loser + ' flagged on time');
+  showBanner((youLost ? 'Time out — you lose' : 'You win on time'), loser + ' flagged · ' + recordStr());
   Sound.end();
 }
 function fmtClock(s){
@@ -3064,17 +3263,20 @@ function toast(msg){
 
 function endGame(){
   clearInterval(clock.timer); clock.timer = null;
-  let title = 'Game over', sub = '';
+  let title = 'Game over', sub = '', kind = 'draw', reason = '';
   if (game.in_checkmate()){
     const loser = game.turn();
     const youLost = loser === S.resolvedYou && mode === 'play';
     title = mode === 'play' ? (youLost ? 'Checkmate — you lose' : 'Checkmate — you win!') : 'Checkmate';
-    sub = (loser === 'w' ? 'White' : 'Black') + ' is mated';
+    reason = (loser === 'w' ? 'White' : 'Black') + ' mated';
+    sub = reason; kind = youLost ? 'loss' : 'win';
     if (mode === 'play' && !youLost) Sound.win(); else Sound.end();
-  } else if (game.in_stalemate()){ title = 'Stalemate'; sub = 'Draw'; Sound.end(); }
-  else if (game.in_threefold_repetition()){ title = 'Draw'; sub = 'Threefold repetition'; Sound.end(); }
-  else if (game.insufficient_material()){ title = 'Draw'; sub = 'Insufficient material'; Sound.end(); }
-  else if (game.in_draw()){ title = 'Draw'; sub = 'Fifty-move rule'; Sound.end(); }
+  } else if (game.in_stalemate()){ title = 'Stalemate'; reason = 'Stalemate'; sub = 'Draw'; Sound.end(); }
+  else if (game.in_threefold_repetition()){ title = 'Draw'; reason = 'Threefold repetition'; sub = reason; Sound.end(); }
+  else if (game.insufficient_material()){ title = 'Draw'; reason = 'Insufficient material'; sub = reason; Sound.end(); }
+  else if (game.in_draw()){ title = 'Draw'; reason = 'Fifty-move rule'; sub = reason; Sound.end(); }
+  concludeGame(kind, reason);
+  if (mode === 'play') sub += ' · ' + recordStr();
   showBanner(title, sub);
 }
 
@@ -3088,6 +3290,7 @@ function newGame(){
   game = new Chess(); Engine.newGame();
   gameOver = false; thinking = false; selected = null; legalTargets = [];
   lastMove = null; viewPly = null; hintMove = null; bestForHint = null; posId++;
+  counted = false;
   resolveYou();
   orientation = S.resolvedYou;
   buildSquares(); renderPosition(); renderMoveList(); renderCaptured();
@@ -3097,6 +3300,7 @@ function newGame(){
   setModeUI();
   if (mode === 'play' && !userControlsSide('w')){ scheduleEngineMove(); }
   else if (S.showEval || mode === 'analysis'){ refreshEval(); }
+  persistGame();
 }
 
 function applyBot(){
@@ -3104,15 +3308,16 @@ function applyBot(){
   oppName.textContent = mode === 'analysis' ? 'Analysis' : bot.name;
   oppRating.textContent = mode === 'analysis' ? 'free board' : (bot.rating + ' · ' + bot.blurb);
   oppAvatar.textContent = mode === 'analysis' ? '🔬' : bot.glyph;
-  meName.textContent = 'You';
+  meName.textContent = NAME || 'You';
   meRating.textContent = playerLabel();
 }
-function playerLabel(){ return (S.resolvedYou === 'w' ? 'White' : 'Black'); }
+function playerLabel(){ return (S.resolvedYou === 'w' ? 'White' : 'Black') + ' · ' + recordStr(); }
 
 function setModeUI(){
   document.body.dataset.mode = mode;
-  tabPlay.classList.toggle('on', mode !== 'puzzle');
+  tabPlay.classList.toggle('on', mode === 'play');
   tabPuzzles.classList.toggle('on', mode === 'puzzle');
+  tabAnalysis.classList.toggle('on', mode === 'analysis');
   applyBot();
   renderCaptured();
 }
@@ -3270,6 +3475,8 @@ async function puzzleHint(){
 function openSettings(){ syncSettingsUI(); settingsEl.classList.add('show'); }
 function closeSettings(){ settingsEl.classList.remove('show'); }
 function syncSettingsUI(){
+  const nf = $('nameField'); if (nf) nf.value = NAME;
+  renderGamesList();
   setSeg('segTheme', S.theme);
   setSeg('segStrength', S.strength);
   setSeg('segColor', S.youAre);
@@ -3289,21 +3496,128 @@ function boot(){
   boardEl = $('board');
   pieceLayer = $('pieces');
   arrowSvg = $('arrows');
+  coordsLayer = $('coords');
   bindGlobals();
   applyTheme();
   resolveYou();
   buildSquares();
   attachBoardEvents();
-  newGame();
   wireControls();
+  if (!CUR) showLanding();
+  else { hideLanding(); startInitial(); }
   // warm the engine in the background
   Engine.init().catch(() => toast('Engine will retry when you move.'));
+}
+
+function showLanding(m){
+  const l = $('landing');
+  if (l) l.classList.remove('gone');
+  document.documentElement.removeAttribute('data-named');
+  renderLanding(m || (roster.users.length ? 'pick' : 'new'));
+}
+function hideLanding(){
+  const l = $('landing'); if (l) l.classList.add('gone');
+  document.documentElement.setAttribute('data-named', '1');
+}
+function renderLanding(m){
+  const pick = $('userPick'), form = $('userNew'), toggle = $('userToggle'), inp = $('nameInput');
+  const has = roster.users.length > 0;
+  if (m === 'pick' && has){
+    pick.style.display = ''; form.style.display = 'none';
+    toggle.style.display = ''; toggle.textContent = '+ New player';
+    pick.innerHTML = '';
+    roster.users.forEach(u => {
+      const d = loadUserData(u.id); const r = d.record || { w:0, l:0, d:0 };
+      const b = el('button', 'user-btn'); b.type = 'button';
+      b.innerHTML = `<span class="u-name">${escapeHtml(u.name || 'Player')}</span><span class="u-rec">${r.w}W ${r.l}L ${r.d}D</span>`;
+      b.onclick = () => { switchUser(u.id); hideLanding(); startInitial(); };
+      const del = el('span', 'u-del', '\u2715'); del.title = 'Delete player';
+      del.onclick = (e) => { e.stopPropagation(); if (confirm('Delete ' + (u.name || 'this player') + ' and all their games?')){ deleteUser(u.id); renderLanding(roster.users.length ? 'pick' : 'new'); } };
+      b.appendChild(del);
+      pick.appendChild(b);
+    });
+  } else {
+    pick.style.display = 'none'; form.style.display = '';
+    toggle.style.display = has ? '' : 'none'; toggle.textContent = '\u2190 Choose existing player';
+    if (inp){ inp.value = ''; setTimeout(() => inp.focus(), 90); }
+  }
+}
+function startInitial(){
+  if (liveGame && !liveGame.over && Array.isArray(liveGame.moves) && liveGame.moves.length){
+    if (resumeGame(liveGame)) return;
+  }
+  newGame();
+}
+function resumeGame(saved){
+  try {
+    const g = new Chess();
+    for (const san of saved.moves){ if (!g.move(san)) return false; }
+    game = g; Engine.newGame();
+    mode = 'play';
+    S.strength = saved.strength || S.strength;
+    S.resolvedYou = saved.youAre || 'w';
+    orientation = saved.orientation || S.resolvedYou;
+    S.time = saved.time || S.time;
+    gameOver = false; thinking = false; selected = null; legalTargets = [];
+    hintMove = null; bestForHint = null; viewPly = null; counted = false; posId++;
+    const h = game.history({ verbose: true });
+    lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null;
+    buildSquares(); renderPosition(); renderMoveList(); renderCaptured();
+    setupClock(); setModeUI();
+    evalFill.style.height = '50%'; evalNum.textContent = '0.0'; evalNum.classList.remove('neg');
+    toast('Resumed your last game.');
+    if (game.game_over()) endGame();
+    else if (!userControlsSide(game.turn())) scheduleEngineMove();
+    else if (S.showEval) refreshEval();
+    return true;
+  } catch { return false; }
+}
+
+/* past-games list (in settings) */
+function renderGamesList(){
+  const list = $('gamesList'); if (!list) return;
+  list.innerHTML = '';
+  const items = [];
+  if (liveGame && !liveGame.over && liveGame.moves && liveGame.moves.length) items.push({ ...liveGame, _live: true });
+  for (const g of games) items.push(g);
+  if (!items.length){ list.innerHTML = '<div class="games-empty">No games yet — finish one and it appears here.</div>'; return; }
+  items.forEach(g => {
+    const row = el('button', 'game-row'); row.type = 'button';
+    const label = g._live ? 'Resume' : (g.result === 'win' ? 'Won' : g.result === 'loss' ? 'Lost' : 'Draw');
+    const cls = g._live ? 'ip' : (g.result === 'win' ? 'w' : g.result === 'loss' ? 'l' : 'd');
+    const when = new Date(g.ts || Date.now());
+    const date = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const opp = escapeHtml(g.opp || (BOTS[g.strength] && BOTS[g.strength].name) || 'bot');
+    const n = Math.ceil((g.moves ? g.moves.length : 0) / 2);
+    row.innerHTML = `<span class="g-res ${cls}">${label}</span><span class="g-meta">vs ${opp} · ${n} move${n === 1 ? '' : 's'}</span><span class="g-date">${date}</span>`;
+    row.onclick = () => { closeSettings(); if (g._live) resumeGame(g); else loadGameIntoReview(g); };
+    list.appendChild(row);
+  });
+}
+function loadGameIntoReview(g){
+  try {
+    const gg = new Chess();
+    for (const san of g.moves){ if (!gg.move(san)) break; }
+    game = gg; Engine.newGame();
+    mode = 'analysis';
+    S.resolvedYou = g.youAre || 'w';
+    orientation = g.orientation || S.resolvedYou;
+    S.strength = g.strength || S.strength;
+    gameOver = false; counted = true; selected = null; legalTargets = [];
+    hintMove = null; bestForHint = null; viewPly = null; posId++;
+    const h = game.history({ verbose: true });
+    lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null;
+    buildSquares(); renderPosition(); renderMoveList(); renderCaptured();
+    setupClock(); setModeUI(); hideBanner();
+    gotoPly(0);
+    toast('Loaded game — step through with the arrows.');
+  } catch { toast('Could not load that game.'); }
 }
 
 /* cache element refs used across module */
 let evalFill, evalNum, oppName, oppRating, oppAvatar, oppCaptured, oppAdv, oppClock, oppThink,
     meName, meRating, meCaptured, meAdv, meClock, movesEl, banner, bannerTitle, bannerSub,
-    promoEl, toastEl, settingsEl, tabPlay, tabPuzzles, pzResult,
+    promoEl, toastEl, settingsEl, tabPlay, tabPuzzles, tabAnalysis, pzResult,
     tglSound, tglCoords, tglAnim, tglDots, tglEval;
 function bindGlobals(){
   evalFill = $('evalFill'); evalNum = $('evalNum');
@@ -3312,12 +3626,26 @@ function bindGlobals(){
   meName = $('meName'); meRating = $('meRating'); meCaptured = $('meCaptured'); meAdv = $('meAdv'); meClock = $('meClock');
   movesEl = $('moves'); banner = $('banner'); bannerTitle = $('bannerTitle'); bannerSub = $('bannerSub');
   promoEl = $('promo'); toastEl = $('toast'); settingsEl = $('settings');
-  tabPlay = $('tabPlay'); tabPuzzles = $('tabPuzzles'); pzResult = $('pzResult');
+  tabPlay = $('tabPlay'); tabPuzzles = $('tabPuzzles'); tabAnalysis = $('tabAnalysis'); pzResult = $('pzResult');
   tglSound = $('tglSound'); tglCoords = $('tglCoords'); tglAnim = $('tglAnim'); tglDots = $('tglDots'); tglEval = $('tglEval');
 }
 
 function wireControls(){
-  $('btnNew').onclick = () => { mode = mode === 'puzzle' ? 'play' : mode; newGame(); };
+  // landing / user gate
+  const startFromLanding = () => {
+    createUser(($('nameInput').value || '').trim() || 'Player');
+    hideLanding();
+    startInitial();
+  };
+  $('landingStart').onclick = startFromLanding;
+  $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') startFromLanding(); });
+  $('userToggle').onclick = () => { const showingPick = $('userPick').style.display !== 'none'; renderLanding(showingPick ? 'new' : 'pick'); };
+  const nf = $('nameField');
+  if (nf) nf.oninput = () => { renameCurrentUser(nf.value); if (mode !== 'puzzle') meName.textContent = NAME || 'You'; };
+  $('btnSwitchUser').onclick = () => { closeSettings(); showLanding('pick'); };
+  $('btnAddUser').onclick = () => { closeSettings(); showLanding('new'); };
+
+  $('btnNew').onclick = () => { mode = 'play'; newGame(); };
   $('btnFlip').onclick = () => { orientation = orientation === 'w' ? 'b' : 'w'; buildSquares(); renderPosition(); renderClocks(); renderCaptured(); };
   $('btnUndo').onclick = () => {
     if (mode === 'puzzle'){ retryPuzzle(); return; }
@@ -3334,7 +3662,8 @@ function wireControls(){
   $('btnResign').onclick = () => {
     if (mode === 'puzzle'){ nextPuzzle(); return; }
     if (mode === 'analysis'){ toast('Analysis board — nothing to resign.'); return; }
-    showBanner('You resigned', BOTS[S.strength].name + ' wins'); Sound.end();
+    concludeGame('loss', 'Resigned');
+    showBanner('You resigned', BOTS[S.strength].name + ' wins · ' + recordStr()); Sound.end();
   };
   $('btnFirst').onclick = () => gotoPly(0);
   $('btnPrev').onclick = () => gotoPly((viewPly == null ? game.history().length : viewPly) - 1);
@@ -3343,14 +3672,13 @@ function wireControls(){
 
   movesEl.onclick = (e) => { const s = e.target.closest('.san'); if (s && s.dataset.ply) gotoPly(+s.dataset.ply); };
 
-  tabPlay.onclick = () => { if (mode === 'puzzle'){ mode = 'play'; newGame(); } };
-  tabPuzzles.onclick = () => startPuzzles();
+  tabPlay.onclick = () => { if (mode !== 'play'){ mode = 'play'; newGame(); } };
+  tabPuzzles.onclick = () => { if (mode !== 'puzzle') startPuzzles(); };
+  tabAnalysis.onclick = () => { if (mode !== 'analysis'){ mode = 'analysis'; newGame(); toast('Analysis: move both sides freely.'); } };
 
   $('btnSettings').onclick = openSettings;
   $('settingsClose').onclick = closeSettings;
   $('settingsBackdrop').onclick = closeSettings;
-
-  $('btnAnalysis').onclick = () => { mode = 'analysis'; newGame(); toast('Analysis: move both sides freely.'); };
 
   // banner actions
   $('bannerNew').onclick = () => { if (mode === 'puzzle'){ nextPuzzle(); } else { newGame(); } };
