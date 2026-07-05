@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Chessmate · Chess</title>
-<link rel="manifest" href='data:application/json,{"name":"Chessmate","short_name":"Chessmate","display":"standalone","background_color":"%23f6f5ef","theme_color":"%23f6f5ef","start_url":"./","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%2312141a%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2764%27 text-anchor=%27middle%27 fill=%27%23c15f3c%27%3E%E2%99%9E%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<link rel="manifest" href='data:application/json,{"name":"Chessmate","short_name":"Chessmate","display":"standalone","background_color":"%2313151b","theme_color":"%2313151b","start_url":"./","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%2312141a%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2764%27 text-anchor=%27middle%27 fill=%27%23c15f3c%27%3E%E2%99%9E%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>try{var r=JSON.parse(localStorage.getItem('chessmate.roster')||'null');if((r&&r.current)||localStorage.getItem('chessmate.name'))document.documentElement.setAttribute('data-named','1');}catch(e){}</script>
 <style>
   :root{
@@ -19,8 +19,14 @@
     --good:#5e8a49; --bad:#c0503f;
     --display:'Fraunces',Georgia,'Times New Roman',serif;
     --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-    --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
     --sq-last:rgba(240,196,90,.55); --sq-sel:rgba(240,196,90,.72); --sq-check:rgba(214,84,74,.5);
+  }
+  /* dark palette (page chrome only — board colours come from data-theme) */
+  body[data-palette=dark]{
+    --ink:#13151b; --panel:#1c1f27; --panel-2:#262a33; --line:#343a45;
+    --text:#ecebe4; --muted:#989ba4; --gold:#d06a44; --gold-2:#e0916f; --gold-soft:#3a2a22;
+    --good:#6fa25a; --bad:#d76a5c;
   }
   /* board themes */
   body[data-theme=emerald]{--lt:#ebecd0;--dk:#6f9350;}
@@ -57,9 +63,10 @@
   }
   .tab.on{background:var(--gold-soft);color:var(--gold-2)}
   .icon-btn{
-    margin-left:auto;width:40px;height:40px;border-radius:12px;background:var(--panel);
+    width:40px;height:40px;border-radius:12px;background:var(--panel);
     border:1px solid var(--line);font-size:18px;color:var(--muted);display:grid;place-items:center;transition:.15s;
   }
+  #btnPalette{margin-left:auto}
   .icon-btn:hover{color:var(--text);border-color:var(--line-2,var(--muted))}
 
   /* ---------- layout ---------- */
@@ -255,7 +262,12 @@
   .game-main:hover{border-color:var(--gold)}
   .g-del{flex:none;width:36px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-size:12px;transition:.13s}
   .g-del:hover{color:var(--bad);border-color:var(--bad)}
-  .name-display{padding:12px 14px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .player-field{margin-top:6px}
+  .player-line{display:flex;align-items:baseline;gap:11px;min-width:0}
+  .player-key{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);flex:none}
+  .player-name{font-family:var(--display);font-size:22px;font-weight:600;color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .switch-link{margin-top:6px;font-size:12.5px;font-weight:500;color:var(--muted);text-decoration:underline;text-underline-offset:3px;background:none;padding:2px 0;transition:.13s}
+  .switch-link:hover{color:var(--gold)}
   .g-res{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex:none}
   .g-res.w{color:var(--good);background:rgba(121,192,106,.14)}
   .g-res.l{color:var(--bad);background:rgba(224,100,95,.14)}
@@ -298,7 +310,8 @@
   }
 </style>
 </head>
-<body data-theme="marble" data-eval="on" data-mode="play">
+<body data-theme="marble" data-eval="on" data-mode="play" data-palette="dark">
+<script>try{var s=JSON.parse(localStorage.getItem('chessmate.settings')||'{}');document.body.dataset.palette=(s.palette==='light')?'light':'dark';}catch(e){document.body.dataset.palette='dark';}</script>
 
   <div class="landing" id="landing">
     <div class="landing-card">
@@ -320,6 +333,7 @@
       <button id="tabPuzzles" class="tab">Puzzles</button>
       <button id="tabAnalysis" class="tab">Analysis</button>
     </nav>
+    <button id="btnPalette" class="icon-btn" aria-label="Toggle dark mode" title="Light / dark">☾</button>
     <button id="btnSettings" class="icon-btn" aria-label="Settings">⚙</button>
   </header>
 
@@ -413,12 +427,9 @@
   <aside class="sheet" id="settings">
     <div class="sheet-head"><h2>Settings</h2><button id="settingsClose" aria-label="Close">✕</button></div>
     <div class="sheet-body">
-      <div class="field">
-        <label>Player</label>
-        <div class="name-display" id="nameDisplay">Player</div>
-        <div class="user-actions">
-          <button id="btnSwitchUser" class="mini-btn" type="button">Switch player</button>
-        </div>
+      <div class="field player-field">
+        <div class="player-line"><span class="player-key">Player</span><span class="player-name" id="nameDisplay">Player</span></div>
+        <button id="btnSwitchUser" class="switch-link" type="button">Switch user</button>
       </div>
       <div class="field">
         <label>Opponent</label>
@@ -2490,6 +2501,7 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 /* ---------- persistent settings ---------- */
 const DEFAULTS = {
   theme: 'marble',
+  palette: 'dark',       // dark|light page chrome
   sound: true,
   coords: true,
   animate: true,
@@ -3548,6 +3560,8 @@ function setSeg(groupId, val){
   document.querySelectorAll('#' + groupId + ' .seg-btn').forEach(b => b.classList.toggle('on', b.dataset.val === val));
 }
 function applyTheme(){ document.body.dataset.theme = S.theme; }
+function applyPalette(){ document.body.dataset.palette = S.palette; updatePaletteIcon(); }
+function updatePaletteIcon(){ const b = $('btnPalette'); if (b) b.textContent = S.palette === 'dark' ? '☾' : '☀'; }
 
 /* ==========================================================================
    WIRING
@@ -3560,6 +3574,7 @@ function boot(){
   filesEl = $('files');
   bindGlobals();
   applyTheme();
+  applyPalette();
   resolveYou();
   buildSquares();
   attachBoardEvents();
@@ -3802,6 +3817,7 @@ function wireControls(){
   tabAnalysis.onclick = () => { if (mode !== 'analysis'){ mode = 'analysis'; newGame(); toast('Analysis: move both sides freely.'); } };
 
   $('btnSettings').onclick = openSettings;
+  $('btnPalette').onclick = () => { S.palette = S.palette === 'dark' ? 'light' : 'dark'; applyPalette(); save(); };
   $('settingsClose').onclick = closeSettings;
   $('settingsBackdrop').onclick = closeSettings;
 
