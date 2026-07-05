@@ -245,8 +245,12 @@
   .mini-btn{flex:1;padding:10px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:13px;font-weight:600;transition:.13s}
   .mini-btn:hover{border-color:var(--gold)}
   .games-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
-  .game-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);text-align:left;transition:.13s}
-  .game-row:hover{border-color:var(--gold)}
+  .game-row{display:flex;align-items:stretch;gap:6px}
+  .game-main{flex:1;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);text-align:left;transition:.13s;min-width:0}
+  .game-main:hover{border-color:var(--gold)}
+  .g-del{flex:none;width:36px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);font-size:12px;transition:.13s}
+  .g-del:hover{color:var(--bad);border-color:var(--bad)}
+  .name-display{padding:12px 14px;border-radius:11px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .g-res{font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex:none}
   .g-res.w{color:var(--good);background:rgba(121,192,106,.14)}
   .g-res.l{color:var(--bad);background:rgba(224,100,95,.14)}
@@ -405,10 +409,9 @@
     <div class="sheet-body">
       <div class="field">
         <label>Player</label>
-        <input id="nameField" class="name-field" type="text" maxlength="20" placeholder="Your name" autocomplete="off" autocapitalize="words" spellcheck="false">
+        <div class="name-display" id="nameDisplay">Player</div>
         <div class="user-actions">
           <button id="btnSwitchUser" class="mini-btn" type="button">Switch player</button>
-          <button id="btnAddUser" class="mini-btn" type="button">New player</button>
         </div>
       </div>
       <div class="field">
@@ -3476,7 +3479,7 @@ async function puzzleHint(){
 function openSettings(){ syncSettingsUI(); settingsEl.classList.add('show'); }
 function closeSettings(){ settingsEl.classList.remove('show'); }
 function syncSettingsUI(){
-  const nf = $('nameField'); if (nf) nf.value = NAME;
+  const nd = $('nameDisplay'); if (nd) nd.textContent = NAME || 'Player';
   renderGamesList();
   setSeg('segTheme', S.theme);
   setSeg('segStrength', S.strength);
@@ -3574,9 +3577,21 @@ function resumeGame(saved){
       if (clock.on) startClockTicking();
       if (!userControlsSide(game.turn())) scheduleEngineMove();
       else if (S.showEval) refreshEval();
+      persistGame();
     }
     return true;
   } catch { return false; }
+}
+
+/* park the current (unlimited) game into history as an in-progress entry */
+function parkGame(){
+  if (!CUR) return;
+  const g = { moves: game.history(), youAre: S.resolvedYou, orientation, strength: S.strength,
+              time: S.time, over: false, result: 'ip', reason: 'Parked',
+              opp: (BOTS[S.strength] && BOTS[S.strength].name) || 'bot', ts: Date.now() };
+  if (g.moves.length){ games.unshift(g); if (games.length > 50) games.length = 50; }
+  liveGame = null;
+  saveCurrentUser();
 }
 
 /* past-games list (in settings) */
@@ -3584,21 +3599,45 @@ function renderGamesList(){
   const list = $('gamesList'); if (!list) return;
   list.innerHTML = '';
   const items = [];
-  if (liveGame && !liveGame.over && liveGame.moves && liveGame.moves.length) items.push({ ...liveGame, _live: true });
-  for (const g of games) items.push(g);
-  if (!items.length){ list.innerHTML = '<div class="games-empty">No games yet — finish one and it appears here.</div>'; return; }
-  items.forEach(g => {
-    const row = el('button', 'game-row'); row.type = 'button';
-    const label = g._live ? 'In progress' : (g.result === 'win' ? 'Won' : g.result === 'loss' ? 'Lost' : 'Draw');
-    const cls = g._live ? 'ip' : (g.result === 'win' ? 'w' : g.result === 'loss' ? 'l' : 'd');
+  if (liveGame && !liveGame.over && liveGame.moves && liveGame.moves.length) items.push({ g: liveGame, live: true });
+  for (const g of games) items.push({ g, live: false });
+  if (!items.length){ list.innerHTML = '<div class="games-empty">No games yet — finish or park one and it appears here.</div>'; return; }
+  items.forEach(({ g, live }) => {
+    const inProgress = live || g.result === 'ip';
+    const row = el('div', 'game-row');
+    const main = el('button', 'game-main'); main.type = 'button';
+    const label = inProgress ? 'In progress' : (g.result === 'win' ? 'Won' : g.result === 'loss' ? 'Lost' : 'Draw');
+    const cls = inProgress ? 'ip' : (g.result === 'win' ? 'w' : g.result === 'loss' ? 'l' : 'd');
     const when = new Date(g.ts || Date.now());
     const date = when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const opp = escapeHtml(g.opp || (BOTS[g.strength] && BOTS[g.strength].name) || 'bot');
     const n = Math.ceil((g.moves ? g.moves.length : 0) / 2);
-    row.innerHTML = `<span class="g-res ${cls}">${label}</span><span class="g-meta">vs ${opp} · ${n} move${n === 1 ? '' : 's'}</span><span class="g-date">${date}</span>`;
-    row.onclick = () => { closeSettings(); if (g._live) resumeGame(g); else loadGameIntoReview(g); };
+    main.innerHTML = `<span class="g-res ${cls}">${label}</span><span class="g-meta">vs ${opp} · ${n} move${n === 1 ? '' : 's'}</span><span class="g-date">${date}</span>`;
+    main.onclick = () => {
+      closeSettings();
+      if (live) resumeGame(liveGame);
+      else if (g.result === 'ip') resumeParkedGame(g);
+      else loadGameIntoReview(g);
+    };
+    row.appendChild(main);
+    if (!live){
+      const del = el('button', 'g-del', '\u2715'); del.type = 'button'; del.title = 'Delete game';
+      del.onclick = (e) => { e.stopPropagation(); const i = games.indexOf(g); if (i >= 0){ games.splice(i, 1); saveCurrentUser(); renderGamesList(); } };
+      row.appendChild(del);
+    }
     list.appendChild(row);
   });
+}
+function resumeParkedGame(g){
+  const idx = games.indexOf(g); if (idx >= 0) games.splice(idx, 1);
+  // preserve the current unlimited in-progress game (if any) by parking it too
+  if (liveGame && !liveGame.over && liveGame.moves && liveGame.moves.length && liveGame.cw == null){
+    games.unshift({ moves: liveGame.moves, youAre: liveGame.youAre, orientation: liveGame.orientation, strength: liveGame.strength,
+                    time: liveGame.time, over: false, result: 'ip', reason: 'Parked', opp: (BOTS[liveGame.strength] && BOTS[liveGame.strength].name) || 'bot', ts: Date.now() });
+    if (games.length > 50) games.length = 50;
+  }
+  liveGame = null; saveCurrentUser();
+  resumeGame(g);
 }
 function loadGameIntoReview(g){
   try {
@@ -3646,10 +3685,7 @@ function wireControls(){
   $('landingStart').onclick = startFromLanding;
   $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') startFromLanding(); });
   $('userToggle').onclick = () => { const showingPick = $('userPick').style.display !== 'none'; renderLanding(showingPick ? 'new' : 'pick'); };
-  const nf = $('nameField');
-  if (nf) nf.oninput = () => { renameCurrentUser(nf.value); if (mode !== 'puzzle') meName.textContent = NAME || 'You'; };
   $('btnSwitchUser').onclick = () => { closeSettings(); showLanding('pick'); };
-  $('btnAddUser').onclick = () => { closeSettings(); showLanding('new'); };
 
   $('btnFlip').onclick = () => { orientation = orientation === 'w' ? 'b' : 'w'; buildSquares(); renderPosition(); renderClocks(); renderCaptured(); };
   $('btnUndo').onclick = () => {
@@ -3667,8 +3703,20 @@ function wireControls(){
   $('btnResign').onclick = () => {
     if (mode === 'puzzle'){ nextPuzzle(); return; }
     if (mode === 'analysis'){ toast('Analysis board — nothing to resign.'); return; }
-    concludeGame('loss', 'Resigned');
-    showBanner('You resigned', BOTS[S.strength].name + ' wins · ' + recordStr()); Sound.end();
+    if (viewPly != null) goLive();
+    if (clock.on){
+      // timed game: resigning is a real loss — warn first
+      if (!confirm('This is a timed game. Resigning will count as a loss. Resign?')) return;
+      if (thinking) Engine.stop();
+      concludeGame('loss', 'Resigned');
+      showBanner('You resigned', BOTS[S.strength].name + ' wins · ' + recordStr()); Sound.end();
+    } else {
+      // unlimited game: park it as in-progress (no loss) and start fresh
+      const hasMoves = game.history().length > 0;
+      if (thinking) Engine.stop();
+      if (hasMoves){ parkGame(); newGame(); toast('Game parked in Past games — resume it any time.'); }
+      else { newGame(); }
+    }
   };
   $('btnFirst').onclick = () => gotoPly(0);
   $('btnPrev').onclick = () => gotoPly((viewPly == null ? game.history().length : viewPly) - 1);
