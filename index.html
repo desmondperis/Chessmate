@@ -3058,10 +3058,23 @@ async function scheduleEngineMove(){
   setThinking(true);
   const my = posId;
   const fen = game.fen();
-  const res = await Engine.search({ fen, skill: bot.skill, movetime: bot.movetime, depth: bot.depth });
+  let res = await Engine.search({ fen, skill: bot.skill, movetime: bot.movetime, depth: bot.depth });
   if (my !== posId) { setThinking(false); return; } // position changed; abort
+  if (!res.best){
+    // The engine returned no move. ONLY end the game if the position is genuinely terminal.
+    if (game.game_over()){ setThinking(false); endGame(); return; }
+    // Otherwise it was a hiccup/timeout (common on slow devices in sharp positions):
+    // retry once, then fall back to a legal move so the game never stalls or falsely ends.
+    res = await Engine.search({ fen, skill: bot.skill, movetime: Math.max(bot.movetime, 800) });
+    if (my !== posId) { setThinking(false); return; }
+    if (!res.best){
+      const legal = game.moves({ verbose: true });
+      if (!legal.length){ setThinking(false); endGame(); return; }
+      const pick = legal[Math.floor(Math.random() * legal.length)];
+      res = { best: pick.from + pick.to + (pick.promotion || ''), cp: res.cp, mate: res.mate };
+    }
+  }
   setThinking(false);
-  if (!res.best){ endGame(); return; }
   const from = res.best.slice(0, 2), to = res.best.slice(2, 4), promo = res.best[4];
   const m = game.move({ from, to, promotion: promo || 'q' });
   if (!m){ return; }
