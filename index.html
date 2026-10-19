@@ -2634,6 +2634,7 @@ const EVAL_DEPTH = 12;   // honest evaluation depth for the bar/hints
    ========================================================================== */
 const Engine = (() => {
   let worker = null, ready = false, booting = null;
+  function reset(){ if(worker){worker.terminate();worker=null;} ready=false;booting=null;listeners.clear();chain=Promise.resolve(); }
   let chain = Promise.resolve();     // serialize go-commands
   const listeners = new Set();
 
@@ -2654,16 +2655,16 @@ const Engine = (() => {
     booting = new Promise((resolve, reject) => {
       let settled = false;
       try { worker = makeWorker(); }
-      catch (e) { reject(e); return; }
+      catch (e) { reset(); reject(e); return; }
       worker.onmessage = (ev) => {
         const line = typeof ev.data === 'string' ? ev.data : (ev.data && ev.data.data) || '';
         onLine(line);
         if (!settled && line === 'uciok') { send('isready'); }
         if (!settled && line === 'readyok') { settled = true; ready = true; resolve(true); }
       };
-      worker.onerror = (e) => { if (!settled) reject(e); };
+      worker.onerror = (e) => { if (!settled) { reset(); reject(e); } else { reset(); } };
       send('uci');
-      setTimeout(() => { if (!settled) reject(new Error('engine timeout')); }, 12000);
+      setTimeout(() => { if (!settled) { reset(); reject(new Error('engine timeout')); } }, 12000);
     });
     return booting;
   }
@@ -2692,7 +2693,7 @@ const Engine = (() => {
       if (opts.movetime) send('go movetime ' + opts.movetime + (opts.depth ? ' depth ' + opts.depth : ''));
       else send('go depth ' + (opts.depth || EVAL_DEPTH));
       // safety timeout
-      setTimeout(() => { if (listeners.has(handler)) { listeners.delete(handler); resolve({ best, cp, mate }); } }, 20000);
+      setTimeout(() => { if (listeners.has(handler)) { listeners.delete(handler); reset(); resolve({ best: null, cp, mate }); } }, 20000);
     });
     chain = chain.then(run, run);
     return chain;
@@ -2702,6 +2703,7 @@ const Engine = (() => {
     async init(){ return boot(); },
     get ready(){ return ready; },
     search,
+    reset,
     stop(){ send('stop'); },
     newGame(){ send('ucinewgame'); },
   };
@@ -3054,38 +3056,44 @@ function afterPositionChange(){
 }
 
 async function scheduleEngineMove(){
-  if (!Engine.ready){ setThinking(true, 'loading engine…'); try { await Engine.init(); } catch { setThinking(false); toast('Engine unavailable — check connection.'); return; } }
-  const bot = BOTS[S.strength];
-  setThinking(true);
   const my = posId;
   const fen = game.fen();
-  let res = await Engine.search({ fen, skill: bot.skill, movetime: bot.movetime, depth: bot.depth });
-  if (my !== posId) { setThinking(false); return; } // position changed; abort
-  if (!res.best){
-    // The engine returned no move. ONLY end the game if the position is genuinely terminal.
-    if (game.game_over()){ setThinking(false); endGame(); return; }
-    // Otherwise it was a hiccup/timeout (common on slow devices in sharp positions):
-    // retry once, then fall back to a legal move so the game never stalls or falsely ends.
-    res = await Engine.search({ fen, skill: bot.skill, movetime: Math.max(bot.movetime, 800) });
-    if (my !== posId) { setThinking(false); return; }
-    if (!res.best){
-      const legal = game.moves({ verbose: true });
-      if (!legal.length){ setThinking(false); endGame(); return; }
-      const pick = legal[Math.floor(Math.random() * legal.length)];
-      res = { best: pick.from + pick.to + (pick.promotion || ''), cp: res.cp, mate: res.mate };
-    }
+  const bot = BOTS[S.strength];
+  if (!bot || game.game_over()) { if(game.game_over()) endGame(); return; }
+  setThinking(true, 'thinking…');
+  let res = { best: null, cp: null, mate: null };
+  try {
+    if (!Engine.ready) { setThinking(true, 'loading engine…'); await Engine.init(); }
+    if (my !== posId || mode !== 'play' || gameOver) return;
+    setThinking(true);
+    res = await Engine.search({ fen, skill: bot.skill, movetime: bot.movetime, depth: bot.depth });
+  } catch (err) {
+    console.warn('Chess engine unavailable; using legal fallback', err);
+    Engine.reset();
+  } finally {
+    if (my !== posId || mode !== 'play' || gameOver) setThinking(false);
+  }
+  if (my !== posId || mode !== 'play' || gameOver) return;
+  if (game.game_over()) { setThinking(false); endGame(); return; }
+  const legal = game.moves({ verbose: true });
+  // Reject missing, malformed and illegal engine responses rather than locking the board.
+  let choice = legal.find(m => res.best && m.from + m.to + (m.promotion || '') === res.best);
+  if (!choice && res.best) choice = legal.find(m => m.from + m.to === res.best.slice(0, 4) && (!m.promotion || m.promotion === (res.best[4] || 'q')));
+  if (!choice) {
+    if (!legal.length) { setThinking(false); if(game.game_over()) endGame(); return; }
+    choice = legal[Math.floor(Math.random() * legal.length)];
+    toast('Engine interrupted — continuing with a legal move.');
   }
   setThinking(false);
-  const from = res.best.slice(0, 2), to = res.best.slice(2, 4), promo = res.best[4];
-  const m = game.move({ from, to, promotion: promo || 'q' });
-  if (!m){ return; }
+  const m = game.move({ from: choice.from, to: choice.to, promotion: choice.promotion || 'q' });
+  if (!m) { toast('Move failed — please start a new game.'); return; }
   lastMove = { from: m.from, to: m.to }; posId++;
   if (S.animate) animateMove(m); else renderPosition();
   soundForMove(m);
   onClockMove(m.color);
   renderMoveList();
   persistGame();
-  setEvalFromCp(res.cp, res.mate, m.color); // honest-ish from search
+  setEvalFromCp(res.cp, res.mate, m.color);
   if (game.game_over()){ endGame(); return; }
   refreshEval();
 }
