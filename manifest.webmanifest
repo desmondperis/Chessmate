@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Chessmate",
+  "short_name": "Chessmate",
+  "description": "Play chess",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#13151b",
+  "theme_color": "#13151b",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
